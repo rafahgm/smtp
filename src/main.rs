@@ -4,9 +4,7 @@ mod error;
 
 use std::sync::Arc;
 use tokio::net::TcpListener;
-
 use crate::{config::{Config, logging_config::LoggingConfig}, error::AppError, smtp::SmtpSession};
-
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
@@ -32,7 +30,8 @@ async fn main() -> Result<(), AppError> {
         let peer = peer_addr.to_string();
 
         tokio::spawn(async move {
-            let mut session = SmtpSession::new(config);
+            tracing::debug!("Nova conexão de {}", peer);
+            let mut session = SmtpSession::new(config, peer.clone());
             if let Err(e) = session.run(stream).await {
                 tracing::error!("[{}] Erro na sessão: {}", peer, e);
             }
