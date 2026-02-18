@@ -1,9 +1,13 @@
 mod error;
+mod response_builder;
 
 use std::sync::Arc;
-use tokio::{ io::AsyncBufReadExt, io::AsyncWriteExt, io::BufReader, net::TcpStream};
+use tokio::{io::AsyncBufReadExt, io::AsyncWriteExt, io::BufReader, net::TcpStream};
+use uuid::Uuid;
 
-use crate::{config::Config, smtp::error::SmtpError};
+use crate::{
+    config::Config, helpers::email_helper::extract_from_angle_brackets, plugins::EmailContext, smtp::error::SmtpError
+};
 
 #[derive(Debug, PartialEq)]
 enum SessionState {
@@ -19,7 +23,8 @@ pub struct SmtpSession {
     config: Arc<Config>,
     state: SessionState,
     peer_addr: String,
-    helo_domain: Option<String>
+    helo_domain: Option<String>,
+    ctx: Option<EmailContext>
 }
 
 impl SmtpSession {
@@ -28,7 +33,8 @@ impl SmtpSession {
             config,
             state: SessionState::Greeting,
             peer_addr,
-            helo_domain: None
+            helo_domain: None,
+            ctx: None,
         }
     }
 
@@ -76,8 +82,13 @@ impl SmtpSession {
             return self.cmd_ehlo(cmd);
         }
 
-        "502 Command Not Implemented\r\n".to_string()
+        if upper.starts_with("MAIL FROM") {
+            return self.cmd_mail_from(cmd);
+        }
+
+        response_builder::command_not_implemented_response()
     }
+
     fn cmd_ehlo(&mut self, cmd: &str) -> String {
         let parts: Vec<&str> = cmd.splitn(2, ' ').collect();
         self.helo_domain = parts.get(1).map(|s| s.to_string());
@@ -86,8 +97,31 @@ impl SmtpSession {
         let hostname = &self.config.server.hostname;
         let max_size = &self.config.server.max_message_size_mb * 1024 * 1024;
 
-        format!(
-            "250-{hostname} Hello\r\n250-SIZE {max_size}\r\n250-8BITMIME\r\n250-STARTTLS\r\n250-AUTH PLAIN LOGIN\r\n250 SMTPUTF8\r\n"
-        )
+        response_builder::ehlo_response(hostname, &self.peer_addr, max_size)
+    }
+
+    fn cmd_mail_from(&mut self, cmd: &str) -> String {
+        if self.state == SessionState::Greeting {
+            return response_builder::bad_sequence_response();
+        }
+
+        let from = extract_from_angle_brackets(cmd)
+            .unwrap_or_default()
+            .to_string();
+
+        let id = Uuid::new_v4().to_string();
+        let mut ctx = EmailContext {
+            id: id.clone(),
+            from: from.clone(),
+            rcpt_to: vec![],
+            raw_headers: String::new(),
+            raw_body: String::new(),
+            metadata: Default::default(),
+        };
+
+        self.ctx = Some(ctx);
+        self.state = SessionState::RcptTo;
+
+        response_builder::mail_from_response()
     }
 }

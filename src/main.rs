@@ -1,6 +1,8 @@
 mod config;
 mod smtp;
 mod error;
+mod helpers;
+mod plugins;
 
 use std::sync::Arc;
 use tokio::net::TcpListener;
