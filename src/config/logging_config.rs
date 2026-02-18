@@ -10,8 +10,8 @@ pub struct LoggingConfig {
 impl Default for LoggingConfig {
     fn default() -> Self {
         LoggingConfig {
-            level: "info".to_string(),
-            format: "json".to_string(),
+            level: "debug".to_string(),
+            format: "pretty".to_string(),
             file: None,
         }
     }
