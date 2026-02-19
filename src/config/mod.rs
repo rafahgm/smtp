@@ -1,10 +1,12 @@
 pub mod config_error;
+pub mod dkim_config;
 pub mod logging_config;
 pub mod server_config;
 
 // use std::path::PathBuf;
 use crate::config::{
-    config_error::ConfigError, logging_config::LoggingConfig, server_config::ServerConfig,
+    config_error::ConfigError, dkim_config::DkimConfig, logging_config::LoggingConfig,
+    server_config::ServerConfig,
 };
 use serde::Deserialize;
 
@@ -13,8 +15,8 @@ pub struct Config {
     pub server: ServerConfig,
     // #[serde(default)]
     // pub tls: TlsConfig,
-    // #[serde(default)]
-    // pub dkim: DkimConfig,
+    #[serde(default)]
+    pub dkim: DkimConfig,
     // #[serde(default)]
     // pub auth: AuthConfig,
     // #[serde(default)]
@@ -35,16 +37,6 @@ pub struct Config {
 //     pub cert_path: PathBuf,
 //     pub key_path: PathBuf,
 //     pub min_version: String,
-// }
-
-// #[derive(Debug, Deserialize, Clone)]
-// pub struct DkimConfig {
-//     pub enabled: bool,
-//     pub domain: String,
-//     pub selector: String,
-//     pub private_key_path: PathBuf,
-//     pub alogrithm: String,
-//     pub headers: Vec<String>
 // }
 
 // #[derive(Debug, Deserialize, Clone)]
