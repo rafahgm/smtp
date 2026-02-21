@@ -3,6 +3,7 @@ mod dkim;
 mod error;
 mod helpers;
 mod plugins;
+mod queue;
 mod smtp_client;
 mod smtp_server;
 
