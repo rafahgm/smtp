@@ -1,11 +1,11 @@
 mod dkim_error;
-use std::str::from_utf8;
 
+use crate::config::dkim_config::DkimConfig;
+use anyhow::Result;
 use base64::{Engine, engine::general_purpose::STANDARD as B64};
 use rsa::pkcs1v15::SigningKey;
 use sha2::{Digest, Sha256};
-
-use crate::{config::dkim_config::DkimConfig, dkim::dkim_error::DkimError};
+use std::str::from_utf8;
 
 pub struct DkimSigner {
     domain: String,
@@ -21,13 +21,13 @@ enum Algorithm {
 }
 
 impl DkimSigner {
-    pub fn from_config(config: &DkimConfig) -> Result<Self, DkimError> {
+    pub fn from_config(config: &DkimConfig) -> Result<Self> {
         let pem = std::fs::read(&config.private_key_path)?;
 
         let algorithm = match config.alogrithm.as_str() {
             "rsa-sha256" => Algorithm::RsaSha256,
             "ed25519-sha256" => Algorithm::Ed25519Sha256,
-            _ => return Err(DkimError::UnknownAlgorithmError()),
+            other => anyhow::bail!("Algoritmo DKIM desconhecido: {}", other),
         };
 
         Ok(Self {
@@ -39,7 +39,7 @@ impl DkimSigner {
         })
     }
 
-    pub fn sign(&self, raw_message: &str) -> Result<String, DkimError> {
+    pub fn sign(&self, raw_message: &str) -> Result<String> {
         let (headers_str, body) = split_message(raw_message);
 
         let body_hash = {
@@ -74,7 +74,7 @@ impl DkimSigner {
         }
     }
 
-    fn compute_signature(&self, data: &[u8]) -> Result<String, DkimError> {
+    fn compute_signature(&self, data: &[u8]) -> Result<String> {
         match self.algorithm {
             Algorithm::RsaSha256 => {
                 use rsa::{RsaPrivateKey, pkcs8::DecodePrivateKey, signature::SignatureEncoding};
